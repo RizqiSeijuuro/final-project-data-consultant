@@ -1,0 +1,8 @@
+# HRS Dataset
+Data Fuel Share/
+
+# Cache Files
+__pycache__
+
+# etc
+*EDA.ipynb

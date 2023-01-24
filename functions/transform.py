@@ -14,7 +14,7 @@ def get_ritase(path, unit):
     raw_data = pd.read_excel(path, sheet_name=list(range(1, 13)), usecols=usecols, index_col=0, skiprows=2)
     cleaned_data = pd.DataFrame(columns=['JAM', 'level_1', 0])
     for i in range(1, 13):
-        cleaned_data = cleaned_data.append(raw_data.get(i).stack().reset_index(), ignore_index=True)
+        cleaned_data = pd.concat([cleaned_data, raw_data.get(i).stack().reset_index()], ignore_index=True)
     cleaned_data.rename(columns={'JAM': 'date', 'level_1': 'hour', 0: f'ritase_{unit}'}, inplace=True)
     cleaned_data[f'ritase_{unit}'] = cleaned_data[f'ritase_{unit}'].astype('int')
     cleaned_data['hour'] = cleaned_data['hour'].astype('float').astype('int')

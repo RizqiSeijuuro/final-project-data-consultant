@@ -4,5 +4,8 @@ Data Fuel Share/
 # Cache Files
 __pycache__
 
+# Environment files
+venv
+
 # etc
 *EDA.ipynb

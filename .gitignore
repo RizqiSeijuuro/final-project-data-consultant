@@ -8,4 +8,7 @@ __pycache__
 venv
 
 # etc
-1.*EDA.ipynb
+*.ipynb
+notebook
+Cleaned Data
+sm-cred.json

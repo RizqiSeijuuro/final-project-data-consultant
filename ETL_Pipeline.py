@@ -16,5 +16,5 @@ new_data = transform(data_isi_fuel, data_produksi, data_ritase)
 
 # Load the data into new spreadsheet
 link_data_warehouse = 'https://docs.google.com/spreadsheets/d/1qc25VHKs4oRaiMmVPdZeuedJbIoSAWjp62GIlfIksms/edit?usp=sharing'
-sheetname = 'Sheet1'
+sheetname = 'Historical'
 load_to_spreadsheet(new_data, link_data_warehouse, sheetname)

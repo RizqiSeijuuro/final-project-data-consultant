@@ -3,6 +3,11 @@ import numpy as np
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 
+def authorize(credential):
+    scope_app = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
+    cred = ServiceAccountCredentials.from_json_keyfile_name(credential, scope_app)
+    return gspread.authorize(cred)
+
 def extract_from_spreadsheet(link, sheetname):
     """
     Read Spreadsheet, then return to pandas dataframe
@@ -14,9 +19,7 @@ def extract_from_spreadsheet(link, sheetname):
     Returns:
     cleaned_data (pandas.core.frame.DataFrame): The cleaned pandas dataframe
     """
-    scope_app = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
-    cred = ServiceAccountCredentials.from_json_keyfile_name('sm-cred.json', scope_app)
-    client = gspread.authorize(cred)
+    client = authorize('sm-cred.json')
     sheet = client.open_by_url(link)
     sheet_instance = sheet.worksheet(sheetname)
     data = sheet_instance.get_all_records()
@@ -102,9 +105,7 @@ def transform(pengisian_fuel, produksi, ritase):
     return new_data
 
 def load_to_spreadsheet(df, link, sheetname):
-    scope_app = ['https://spreadsheets.google.com/feeds','https://www.googleapis.com/auth/drive']
-    cred = ServiceAccountCredentials.from_json_keyfile_name('sm-cred.json', scope_app)
-    client = gspread.authorize(cred)
+    client = authorize('sm-cred.json')
     sheet = client.open_by_url(link)
     sheet_instance = sheet.worksheet(sheetname)
     df['Date'] = df['Date'].astype(str)

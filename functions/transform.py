@@ -55,14 +55,10 @@ def get_fuel_unit(path):
       temp_date = temp_date.apply(pd.to_datetime, errors='coerce').dropna(axis=1, how='all')
 
       df3 = df2.copy()
-    
+
       for i in range(32):
         for k in range(2):
-          if k == 0:
-            shift = 'Day'
-          else:
-            shift = 'Night'
-
+          shift = 'Day' if k == 0 else 'Night'
           for j in range(8):
             try:
               new_row = {'CodeUnit': df3.loc[j].values[0], 
@@ -74,7 +70,7 @@ def get_fuel_unit(path):
                         'Date': temp_date.loc[0].values[i],
                         'Shift': shift}
               temp = temp.append(new_row, ignore_index=True)
-            except:
+            except Exception:
               break
           df3 = df3.drop(df3.iloc[:, 2:6], axis = 1)
 
@@ -84,5 +80,6 @@ def get_fuel_unit(path):
 
     for c in range(len(temp)):
       stemp = type(temp['Jam'][c]) == pd._libs.tslibs.timestamps.Timestamp
-      if stemp == True:
-        temp['Jam'][c] = temp['Jam'][c].strftime('%H:%M:%S')
+      if stemp:
+          temp['Jam'][c] = temp['Jam'][c].strftime('%H:%M:%S')
+    return temp

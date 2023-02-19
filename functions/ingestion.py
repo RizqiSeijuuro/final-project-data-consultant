@@ -25,7 +25,7 @@ def extract_from_spreadsheet(link, sheetname):
     data = sheet_instance.get_all_records()
     df = pd.DataFrame.from_dict(data)
     if 'SLOC' in df.columns:
-        cleaning_isi_fuel(df)
+        df = cleaning_isi_fuel(df)
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'], format='%d/%m/%Y')
     if 'Hour' in df.columns:
@@ -35,21 +35,24 @@ def extract_from_spreadsheet(link, sheetname):
 
 def cleaning_isi_fuel(df):
     df['Liter'] = df['Liter'].replace('Kosong', np.nan).astype(float).astype("Int32")
-    df.replace('eror', np.nan)
-    anomali = ['Kosong', '0.511111111', '0.506944444', '0.522222222', '0.517361111']
-    df['Hour'] = df['Hour'].where(~df['Hour'].isin(anomali), np.nan)
+    anomali = ['', 'eror', 'Kosong', '0.511111111', '0.506944444', '0.522222222', '0.517361111']
+    df = df.replace(anomali, np.nan)
+    df.loc[(df['Hm']==23498) & (df['Code Unit']=='EX41'),'Hm'] = 27498
+    # df['Hm'] = df['Hm'].replace(23498, 27498)
 
     if df['SLOC'].isnull().values.any():
         df["SLOC"].fillna(df["SLOC"].mode()[0], inplace=True)
     if df['Liter'].isnull().values.any():
         df["Liter"].fillna(df["Liter"].median(), inplace=True)
     if df['Hm'].isnull().values.any():
-        df['Hm'] = df['Hm'].fillna(method='ffill')
+        for CodeUnit in sorted(df['Code Unit'].unique()):
+            df.loc[df['Code Unit']==CodeUnit,'Hm'] = df.loc[df['Code Unit']==CodeUnit,'Hm'].interpolate(method='linear', limit_direction='forward')
     if df['Hour'].isnull().values.any():
         df.at[2592, 'Hour'] = '12:16:00'
         df.at[2593, 'Hour'] = '12:10:00'
         df.at[2594, 'Hour'] = '12:32:00'
         df.at[2595, 'Hour'] = '12:25:00'
+    return df
 
 def transform(pengisian_fuel, produksi, ritase):
     pd.options.mode.use_inf_as_na = True
@@ -63,13 +66,12 @@ def transform(pengisian_fuel, produksi, ritase):
     df_dates = pd.DataFrame(data=dates, columns=['Date'])
     code_units = sorted(pengisian_fuel['Code Unit'].unique())
     for code_unit in code_units:
-        pengisian_fuel_dict[code_unit] = pengisian_fuel[pengisian_fuel['Code Unit'] == code_unit][['Date','Liter']].groupby('Date').sum().reset_index()
+        pengisian_fuel_dict[code_unit] = pengisian_fuel[pengisian_fuel['Code Unit'] == code_unit][['Date','Liter', 'Hm']].groupby('Date').agg({'Liter':'sum', 'Hm':'max'}).reset_index()
         pengisian_fuel_dict[code_unit] = df_dates.join(pengisian_fuel_dict[code_unit].set_index('Date'), on='Date')
         pengisian_fuel_dict[code_unit]['Liter'].fillna(0, inplace=True)
         pengisian_fuel_dict[code_unit]['Code Unit'] = code_unit
 
     produksi_dict = {}
-    # produksi['Ritase'] = (produksi['Production OB'] / 43)
     eq_numbs = sorted(produksi['Eq. Numb'].unique())
     for eq_numb in eq_numbs:
         produksi_dict[eq_numb] = produksi[produksi['Eq. Numb'] == eq_numb][['Date', 'Production OB']].groupby('Date').sum().reset_index()
@@ -97,11 +99,15 @@ def transform(pengisian_fuel, produksi, ritase):
     if new_data['Production OB'].isnull().values.any():
         new_data['Production OB'].fillna(0, inplace=True)
     new_data['Production OB'] = new_data['Production OB'].astype(int)
+    for CodeUnit in sorted(new_data['Code Unit'].unique()):
+        new_data.loc[new_data['Code Unit']==CodeUnit,'Hm'] = new_data.loc[new_data['Code Unit']==CodeUnit,'Hm'].fillna(method='bfill')
+        new_data.loc[new_data['Code Unit']==CodeUnit,'HM'] = new_data.loc[new_data['Code Unit']==CodeUnit,'Hm'].diff()
+    new_data['HM'].fillna(0, inplace=True)
+    new_data.loc[new_data['HM'] < 0, 'HM'] = 0
     new_data.rename(columns={'Liter': 'Fuel Consumption'}, inplace=True)
-    new_data = new_data[['Date', 'Fuel Consumption', 'Fuel Ratio', 'Production OB', 'Code Unit']]
+    new_data = new_data[['Date', 'Fuel Consumption', 'Fuel Ratio', 'Hm', 'HM', 'Production OB', 'Code Unit']]
     new_data['Fuel Ratio'] = np.where(new_data['Production OB'] == 0, 0, new_data['Fuel Ratio'])
     new_data = new_data.sort_values(by=['Date', 'Code Unit']).reset_index(drop=True)
-    # new_data[['Fuel_Consumption', 'Fuel_Ratio', 'Ritase', 'Production_OB']] = new_data[['Fuel_Consumption', 'Fuel_Ratio', 'Ritase', 'Production_OB']].astype(float).round(1)
     return new_data
 
 def load_to_spreadsheet(df, link, sheetname):
